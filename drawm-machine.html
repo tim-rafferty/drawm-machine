@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawm Machine</title>
+    <style>
+        :root {
+            --bg-color: #111;
+            --panel-bg: #222;
+            --border-color: #333;
+            --text-color: #eee;
+            --accent-color: #0078d7;
+            --active-color: #1e90ff;
+            --track-bg: #2a2a2a;
+            --button-bg: #333;
+            --button-hover: #444;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+        }
+        
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        #toolbar {
+            display: flex;
+            padding: 10px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            justify-content: space-between;
+        }
+        
+        .toolbar-section {
+            display: flex;
+            align-items: center;
+        }
+        
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            cursor: crosshair;
+        }
+        
+        #drawing-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .control-btn {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: none;
+            padding: 8px 12px;
+            margin-right: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-btn:hover {
+            background-color: var(--button-hover);
+        }
+        
+        .control-btn.active {
+            background-color: var(--accent-color);
+        }
+        
+        .icon {
+            margin-right: 5px;
+            font-size: 14px;
+        }
+        
+        #panels-container {
+            display: flex;
+            background-color: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        #tracks-panel {
+            width: 250px;
+            padding: 10px;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            max-height: 200px;
+        }
+        
+        #parameter-panel {
+            flex-grow: 1;
+            padding: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .track {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: var(--track-bg);
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .track.selected {
+            border-left: 3px solid var(--accent-color);
+        }
+        
+        .track-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .track-controls {
+            display: flex;
+            margin-left: auto;
+        }
+        
+        .track-control-btn {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            color: var(--text-color);
+            border: none;
+            cursor: pointer;
+            margin-left: 5px;
+            border-radius: 3px;
+        }
+        
+        .track-control-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .track-muted {
+            opacity: 0.5;
+        }
+        
+        .transport-controls {
+            display: flex;
+            align-items: center;
+        }
+        
+        #tempo-control {
+            margin-left: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        #tempo-label {
+            margin-right: 10px;
+            min-width: 100px;
+        }
+        
+        .parameter-group {
+            margin-bottom: 15px;
+        }
+        
+        .parameter-title {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .parameter-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .parameter-label {
+            width: 100px;
+            font-size: 12px;
+        }
+        
+        .parameter-value {
+            width: 50px;
+            text-align: right;
+            font-size: 12px;
+        }
+        
+        .parameter-slider {
+            flex-grow: 1;
+            margin: 0 10px;
+        }
+        
+        .grid-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        
+        #draw-cursor {
+            position: absolute;
+            pointer-events: none;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-left: -7px;
+            margin-top: -7px;
+            z-index: 100;
+            display: none;
+        }
+        
+        /* Playback mode selector */
+        .playback-mode {
+            display: flex;
+            align-items: center;
+            margin-left: 20px;
+        }
+        
+        .playback-mode select {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            border: none;
+            padding: 5px;
+            border-radius: 4px;
+        }
+        
+        /* Effects panel */
+        .effects-panel {
+            background-color: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .effects-panel.visible {
+            max-height: 200px;
+            padding: 10px;
+        }
+        
+        .effects-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .effect-item {
+            width: calc(33.33% - 10px);
+            background-color: var(--track-bg);
+            border-radius: 4px;
+            padding: 10px;
+        }
+        
+        .effect-title {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Main Toolbar -->
+        <div id="toolbar">
+            <div class="toolbar-section">
+                <button id="draw-btn" class="control-btn active"><span class="icon">✏️</span>Draw</button>
+                <button id="edit-btn" class="control-btn"><span class="icon">🔧</span>Edit</button>
+                <button id="clear-btn" class="control-btn"><span class="icon">🗑️</span>Clear All</button>
+                <button id="effects-btn" class="control-btn"><span class="icon">🎛️</span>Effects</button>
+                <button id="samples-btn" class="control-btn"><span class="icon">🔊</span>Samples</button>
+            </div>
+            <div class="toolbar-section transport-controls">
+                <button id="play-btn" class="control-btn"><span class="icon">▶️</span>Play</button>
+                <button id="stop-btn" class="control-btn"><span class="icon">⏹️</span>Stop</button>
+                <div id="tempo-control">
+                    <span id="tempo-label">Tempo: 120 BPM</span>
+                    <input type="range" id="tempo-slider" min="60" max="200" value="120" class="parameter-slider">
+                </div>
+                <!-- Added playback mode selector -->
+                <div class="playback-mode">
+                    <select id="playback-mode">
+                        <option value="gesture">Gesture Speed</option>
+                        <option value="quantized">Quantized to Tempo</option>
+                    </select>
+                </div>
+                <button id="grid-toggle" class="control-btn"><span class="icon">📏</span>Grid</button>
+                <button id="quantize-toggle" class="control-btn"><span class="icon">📊</span>Quantize</button>
+            </div>
+        </div>
+        
+        <!-- Main Canvas -->
+        <div id="canvas-container">
+            <canvas id="grid-canvas" class="grid-canvas"></canvas>
+            <canvas id="drawing-canvas"></canvas>
+            <div id="draw-cursor"></div>
+        </div>
+        
+        <!-- Effects Panel -->
+        <div id="effects-panel" class="effects-panel">
+            <h3>Effects</h3>
+            <div class="effects-container">
+                <div class="effect-item">
+                    <div class="effect-title">Reverb</div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Amount</div>
+                        <input type="range" min="0" max="100" value="20" class="parameter-slider" id="reverb-amount">
+                        <div class="parameter-value" id="reverb-value">20%</div>
+                    </div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Decay</div>
+                        <input type="range" min="1" max="80" value="30" class="parameter-slider" id="reverb-decay">
+                        <div class="parameter-value" id="reverb-decay-value">3.0s</div>
+                    </div>
+                </div>
+                <div class="effect-item">
+                    <div class="effect-title">Delay</div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Amount</div>
+                        <input type="range" min="0" max="100" value="0" class="parameter-slider" id="delay-amount">
+                        <div class="parameter-value" id="delay-value">0%</div>
+                    </div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Time</div>
+                        <select id="delay-time" class="parameter-select">
+                            <option value="32n">1/32</option>
+                            <option value="16n">1/16</option>
+                            <option value="8n" selected>1/8</option>
+                            <option value="4n">1/4</option>
+                            <option value="2n">1/2</option>
+                        </select>
+                    </div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Feedback</div>
+                        <input type="range" min="0" max="90" value="50" class="parameter-slider" id="delay-feedback">
+                        <div class="parameter-value" id="delay-feedback-value">50%</div>
+                    </div>
+                </div>
+                <div class="effect-item">
+                    <div class="effect-title">Filter</div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Frequency</div>
+                        <input type="range" min="0" max="100" value="100" class="parameter-slider" id="filter-freq">
+                        <div class="parameter-value" id="filter-freq-value">20kHz</div>
+                    </div>
+                    <div class="parameter-row">
+                        <div class="parameter-label">Type</div>
+                        <select id="filter-type" class="parameter-select">
+                            <option value="lowpass" selected>Lowpass</option>
+                            <option value="highpass">Highpass</option>
+                            <option value="bandpass">Bandpass</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Panels -->
+        <div id="panels-container">
+            <div id="tracks-panel">
+                <h3>Tracks</h3>
+                <div id="tracks-container"></div>
+            </div>
+            <div id="parameter-panel">
+                <h3>Parameters</h3>
+                <div id="track-parameters">
+                    <div class="parameter-group">
+                        <div class="parameter-title">Sound</div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">Instrument</div>
+                            <select id="instrument-select" class="parameter-select">
+                                <option value="synth">Synth</option>
+                                <option value="fm">FM Synth</option>
+                                <option value="membrane">Membrane</option>
+                                <option value="metal">Metallic</option>
+                                <option value="sample">Sample</option>
+                            </select>
+                        </div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">Volume</div>
+                            <input type="range" min="0" max="100" value="80" class="parameter-slider" id="volume-slider">
+                            <div class="parameter-value" id="volume-value">80%</div>
+                        </div>
+                    </div>
+                    <div class="parameter-group">
+                        <div class="parameter-title">Mapping</div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">X-Axis</div>
+                            <select id="x-mapping" class="parameter-select">
+                                <option value="none">None</option>
+                                <option value="pitch">Pitch</option>
+                                <option value="filter">Filter</option>
+                                <option value="pan">Pan</option>
+                            </select>
+                        </div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">Y-Axis</div>
+                            <select id="y-mapping" class="parameter-select">
+                                <option value="pitch">Pitch</option>
+                                <option value="none">None</option>
+                                <option value="filter">Filter</option>
+                                <option value="volume">Volume</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script>
+        // Main DrawmMachine class - enhanced implementation
+        class DrawmMachine {
+            constructor() {
+                console.log("Initializing DrawmMachine");
+                
+                // Canvas and drawing elements
+                this.canvas = document.getElementById('drawing-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.gridCanvas = document.getElementById('grid-canvas');
+                this.gridCtx = this.gridCanvas.getContext('2d');
+                this.drawCursor = document.getElementById('draw-cursor');
+                
+                // Drawing state
+                this.isDrawing = false;
+                this.editMode = false;
+                this.currentPath = [];
+                this.paths = [];
+                this.colors = ['#FF5722', '#03A9F4', '#4CAF50', '#FFC107', '#9C27B0', '#E91E63', '#3F51B5', '#00BCD4'];
+                this.currentColor = this.colors[1]; // Default to blue
+                
+                // UI state
+                this.showGrid = false;
+                this.quantizeEnabled = false;
+                this.gridSize = 20;
+                
+                // Tracks
+                this.tracks = [];
+                this.activeTrack = null;
+                
+                // Playback state
+                this.isPlaying = false;
+                this.playbackMode = 'gesture'; // Default to gesture-accurate playback
+                
+                // Initialize
+                this.initCanvas();
+                this.addEventListeners();
+                this.createDefaultTrack();
+                
+                // Initialize audio
+                this.initTone();
+                
+                // Start render loop
+                this.startRenderLoop();
+                
+                console.log("DrawmMachine initialized successfully");
+            }
+            
+            // Initialize canvas size and setup
+            initCanvas() {
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                this.drawGrid();
+            }
+            
+            // Resize canvas to fit container
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.gridCanvas.width = container.clientWidth;
+                this.gridCanvas.height = container.clientHeight;
+                
+                // Redraw grid after resize
+                this.drawGrid();
+            }
+            
+            // All event listeners are set up here
+            addEventListeners() {
+                console.log("Setting up event listeners");
+                
+                // Canvas events
+                this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mouseup', () => this.handleMouseUp());
+                this.canvas.addEventListener('mouseleave', () => this.handleMouseUp());
+                
+                // Tool buttons
+                document.getElementById('draw-btn').addEventListener('click', () => this.setDrawMode());
+                document.getElementById('edit-btn').addEventListener('click', () => this.setEditMode());
+                document.getElementById('clear-btn').addEventListener('click', () => this.clearAll());
+                document.getElementById('effects-btn').addEventListener('click', () => this.toggleEffectsPanel());
+                
+                // Transport controls
+                document.getElementById('play-btn').addEventListener('click', () => this.play());
+                document.getElementById('stop-btn').addEventListener('click', () => this.stop());
+                
+                // Grid and quantize toggles
+                document.getElementById('grid-toggle').addEventListener('click', () => this.toggleGrid());
+                document.getElementById('quantize-toggle').addEventListener('click', () => this.toggleQuantize());
+                
+                // Playback mode selector
+                const playbackMode = document.getElementById('playback-mode');
+                if (playbackMode) {
+                    playbackMode.addEventListener('change', (e) => {
+                        this.playbackMode = e.target.value;
+                        console.log(`Playback mode changed to: ${this.playbackMode}`);
+                    });
+                }
+    
+                // Tempo control
+                const tempoSlider = document.getElementById('tempo-slider');
+                if (tempoSlider) {
+                    tempoSlider.addEventListener('input', (e) => {
+                        const tempo = parseInt(e.target.value);
+                        if (Tone.Transport) {
+                            Tone.Transport.bpm.value = tempo;
+                        }
+                        document.getElementById('tempo-label').textContent = `Tempo: ${tempo} BPM`;
+                    });
+                }
+
+                // Parameter controls
+                const instrumentSelect = document.getElementById('instrument-select');
+                if (instrumentSelect) {
+                    instrumentSelect.addEventListener('change', (e) => {
+                        if (this.activeTrack) {
+                            this.activeTrack.instrument = e.target.value;
+                        }
+                    });
+                }
+                
+                const volumeSlider = document.getElementById('volume-slider');
+                if (volumeSlider) {
+                    volumeSlider.addEventListener('input', (e) => {
+                        if (this.activeTrack) {
+                            const volume = parseInt(e.target.value) / 100;
+                            this.activeTrack.volume = volume;
+                            const volumeValue = document.getElementById('volume-value');
+                            if (volumeValue) volumeValue.textContent = `${e.target.value}%`;
+                        }
+                    });
+                }
+                
+                // Effects panel controls
+                this.setupEffectsListeners();
+                
+                console.log("Event listeners set up successfully");
+            }
+
+            // Set up effects controls
+            setupEffectsListeners() {
+                // Reverb controls
+                const reverbAmount = document.getElementById('reverb-amount');
+                if (reverbAmount) {
+                    reverbAmount.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value) / 100;
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.reverb) {
+                            this.trackEffects.reverb.wet.value = value;
+                            document.getElementById('reverb-value').textContent = `${e.target.value}%`;
+                        }
+                    });
+                }
+                
+                const reverbDecay = document.getElementById('reverb-decay');
+                if (reverbDecay) {
+                    reverbDecay.addEventListener('input', (e) => {
+                        const value = (parseInt(e.target.value) / 10).toFixed(1);
+                        document.getElementById('reverb-decay-value').textContent = `${value}s`;
+                    });
+                }
+                
+                // Delay controls
+                const delayAmount = document.getElementById('delay-amount');
+                if (delayAmount) {
+                    delayAmount.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value) / 100;
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.delay) {
+                            this.trackEffects.delay.wet.value = value;
+                            document.getElementById('delay-value').textContent = `${e.target.value}%`;
+                        }
+                    });
+                }
+                
+                const delayTime = document.getElementById('delay-time');
+                if (delayTime) {
+                    delayTime.addEventListener('change', (e) => {
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.delay) {
+                            this.trackEffects.delay.delayTime.value = e.target.value;
+                        }
+                    });
+                }
+                
+                const delayFeedback = document.getElementById('delay-feedback');
+                if (delayFeedback) {
+                    delayFeedback.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value) / 100;
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.delay) {
+                            this.trackEffects.delay.feedback.value = value;
+                            document.getElementById('delay-feedback-value').textContent = `${e.target.value}%`;
+                        }
+                    });
+                }
+                
+                // Filter controls
+                const filterFreq = document.getElementById('filter-freq');
+                if (filterFreq) {
+                    filterFreq.addEventListener('input', (e) => {
+                        const value = parseInt(e.target.value);
+                        // Map 0-100 to 50-20000 Hz (logarithmic scale)
+                        const freq = Math.pow(10, 2.0 + (value / 100) * 2.6);
+                        
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.filter) {
+                            this.trackEffects.filter.frequency.value = freq;
+                            document.getElementById('filter-freq-value').textContent = 
+                                freq >= 1000 ? `${(freq/1000).toFixed(1)}kHz` : `${Math.round(freq)}Hz`;
+                        }
+                    });
+                }
+                
+                const filterType = document.getElementById('filter-type');
+                if (filterType) {
+                    filterType.addEventListener('change', (e) => {
+                        if (this.activeTrack && this.trackEffects && this.trackEffects.filter) {
+                            this.trackEffects.filter.type = e.target.value;
+                        }
+                    });
+                }
+            }
+
+            // Toggle effects panel visibility
+            toggleEffectsPanel() {
+                const panel = document.getElementById('effects-panel');
+                if (panel) {
+                    panel.classList.toggle('visible');
+                    document.getElementById('effects-btn').classList.toggle('active');
+                }
+            }
+
+            // Initialize Tone.js audio engine
+            initTone() {
+                console.log("Initializing Tone.js audio engine");
+                try {
+                    // Master effects chain
+                    this.masterReverb = new Tone.Reverb(3).toDestination();
+                    this.masterReverb.wet.value = 0.3;
+                    
+                    this.masterDelay = new Tone.FeedbackDelay("8n", 0.5).connect(this.masterReverb);
+                    this.masterDelay.wet.value = 0.2;
+                    
+                    this.masterCompressor = new Tone.Compressor({
+                        threshold: -20,
+                        ratio: 4,
+                        attack: 0.03,
+                        release: 0.25
+                    }).connect(this.masterDelay);
+                    
+                    // Track effects
+                    this.trackEffects = {
+                        reverb: new Tone.Reverb(2).connect(this.masterCompressor),
+                        delay: new Tone.FeedbackDelay("16n", 0.5).connect(this.masterCompressor),
+                        filter: new Tone.Filter(20000, "lowpass").connect(this.masterCompressor)
+                    };
+                    
+                    this.trackEffects.reverb.wet.value = 0.2;
+                    this.trackEffects.delay.wet.value = 0;
+                    
+                    // Synthesizers - using more reliable, simple options
+                    this.synths = [
+                        // Basic Synth
+                        new Tone.Synth({
+                            oscillator: { type: 'sine' },
+                            envelope: {
+                                attack: 0.005,
+                                decay: 0.1,
+                                sustain: 0.3,
+                                release: 1
+                            }
+                        }).connect(this.trackEffects.filter),
+                        
+                        // FM Synth
+                        new Tone.FMSynth({
+                            harmonicity: 3,
+                            modulationIndex: 10,
+                            oscillator: { type: 'triangle' },
+                            envelope: {
+                                attack: 0.01,
+                                decay: 0.1,
+                                sustain: 0.3,
+                                release: 0.5
+                            }
+                        }).connect(this.trackEffects.filter),
+                        
+                        // Membrane Synth (drums)
+                        new Tone.MembraneSynth({
+                            pitchDecay: 0.05,
+                            octaves: 10,
+                            oscillator: { type: 'sine' },
+                            envelope: {
+                                attack: 0.001,
+                                decay: 0.4,
+                                sustain: 0.01,
+                                release: 1.4,
+                                attackCurve: 'exponential'
+                            }
+                        }).connect(this.trackEffects.filter),
+                        
+                        // Metal Synth (cymbals, bells)
+                        new Tone.MetalSynth({
+                            frequency: 200,
+                            envelope: {
+                                attack: 0.001,
+                                decay: 0.1,
+                                release: 0.1
+                            },
+                            harmonicity: 5.1,
+                            modulationIndex: 32,
+                            resonance: 800,
+                            octaves: 1.5
+                        }).connect(this.trackEffects.filter)
+                    ];
+                    
+                    // Set up playback scheduler
+                    this.initTransport();
+                    
+                    console.log("Tone.js initialized successfully");
+                } catch (e) {
+                    console.error("Error initializing Tone.js:", e);
+                }
+            }
+
+            // Add these methods to handle playback
+            initTransport() {
+                try {
+                    // Initialize Tone.js transport
+                    Tone.Transport.bpm.value = 120; // Default tempo
+                    
+                    // Set up regular event for playhead updates
+                    Tone.Transport.scheduleRepeat(time => {
+                        this.advancePlayheads(time);
+                    }, "16n");
+                    
+                    console.log("Transport initialized");
+                } catch (e) {
+                    console.error("Error initializing transport:", e);
+                }
+            }
+
+            // Create playheads for paths
+            createPlayheads() {
+                this.playheads = [];
+                
+                // Create a playhead for each path
+                for (let i = 0; i < this.paths.length; i++) {
+                    const path = this.paths[i];
+                    
+                    // Calculate total drawing time for gesture-accurate playback
+                    let totalDrawTime = 0;
+                    if (path.points && path.points.length > 1) {
+                        const firstPoint = path.points[0];
+                        const lastPoint = path.points[path.points.length - 1];
+                        if (firstPoint.time && lastPoint.time) {
+                            totalDrawTime = (lastPoint.time - firstPoint.time) / 1000; // Convert to seconds
+                            // Ensure minimum playback time (avoid super fast loops)
+                            totalDrawTime = Math.max(totalDrawTime, 0.5);
+                        }
+                    }
+                    
+                    this.playheads.push({
+                        pathIndex: i,
+                        position: 0,
+                        active: true,
+                        totalDrawTime: totalDrawTime // Store for gesture playback
+                    });
+                }
+            }
+
+            // Play/pause the transport
+            play() {
+                try {
+                    // Request user gesture for audio context
+                    if (Tone.context.state !== 'running') {
+                        Tone.context.resume();
+                    }
+                    
+                    if (this.isPlaying) return;
+                    
+                    this.isPlaying = true;
+                    
+                    // Make sure we have playheads for all paths
+                    this.createPlayheads();
+                    
+                    // Start the transport
+                    Tone.Transport.start();
+                    
+                    document.getElementById('play-btn').classList.add('active');
+                    console.log("Playback started");
+                } catch (e) {
+                    console.error("Error starting playback:", e);
+                }
+            }
+
+            // Stop the transport
+            stop() {
+                if (!this.isPlaying) return;
+                
+                this.isPlaying = false;
+                Tone.Transport.stop();
+                
+                // Reset all playheads
+                for (const playhead of this.playheads) {
+                    playhead.position = 0;
+                }
+                
+                document.getElementById('play-btn').classList.remove('active');
+                console.log("Playback stopped");
+            }
+
+            // Advance playheads along their paths
+            advancePlayheads(time) {
+                try {
+                    for (let i = 0; i < this.playheads.length; i++) {
+                        const playhead = this.playheads[i];
+                        const path = this.paths[playhead.pathIndex];
+                        
+                        if (!path || !playhead.active || !path.points || path.points.length < 2) continue;
+                        
+                        // Get track for this path
+                        let track = null;
+                        for (const t of this.tracks) {
+                            if (t.id === path.trackId) {
+                                track = t;
+                                break;
+                            }
+                        }
+                        
+                        if (!track) continue;
+                        
+                        // Update position based on playback mode
+                        if (this.playbackMode === 'gesture' && playhead.totalDrawTime) {
+                            // Use the original drawing time for playback speed
+                            const increment = Tone.Transport.sampleTime / playhead.totalDrawTime;
+                            playhead.position = (playhead.position + increment) % 1;
+                        } else {
+                            // Default to quantized tempo-based playback
+                            const increment = Tone.Transport.sampleTime / (60 / Tone.Transport.bpm.value);
+                            playhead.position = (playhead.position + increment) % 1;
+                        }
+                        
+                        // Calculate current position along the path
+                        const pointIndex = Math.floor(playhead.position * (path.points.length - 1));
+                        const nextPointIndex = Math.min(pointIndex + 1, path.points.length - 1);
+                        const pointFraction = (playhead.position * (path.points.length - 1)) - pointIndex;
+                        
+                        // Linear interpolation between points
+                        const currentPoint = path.points[pointIndex];
+                        const nextPoint = path.points[nextPointIndex];
+                        
+                        const interpolatedPoint = {
+                            x: currentPoint.x + (nextPoint.x - currentPoint.x) * pointFraction,
+                            y: currentPoint.y + (nextPoint.y - currentPoint.y) * pointFraction
+                        };
+                        
+                        // Trigger sound based on track settings
+                        this.triggerSound(track, interpolatedPoint, time);
+                    }
+                } catch (e) {
+                    console.error("Error advancing playheads:", e);
+                }
+            }
+
+            // Mouse move handler adds points while drawing
+            handleMouseMove(event) {
+                // Update cursor position
+                const pos = this.getMousePosition(event);
+                this.drawCursor.style.left = `${pos.x}px`;
+                this.drawCursor.style.top = `${pos.y}px`;
+                
+                // Show the cursor when moving
+                this.drawCursor.style.display = 'block';
+                
+                if (this.isDrawing) {
+                    // Add to the current path if drawing
+                    const point = this.quantizeEnabled ? 
+                        this.quantizePoint(pos.x, pos.y) : 
+                        { x: pos.x, y: pos.y };
+                        
+                    // Add point with minimum distance to avoid too many points
+                    const lastPoint = this.currentPath[this.currentPath.length - 1];
+                    const distance = Math.sqrt(
+                        Math.pow(point.x - lastPoint.x, 2) + 
+                        Math.pow(point.y - lastPoint.y, 2)
+                    );
+                    
+                    if (distance >= 5) { // Minimum distance between points
+                        this.currentPath.push({
+                            x: point.x,
+                            y: point.y,
+                            time: Date.now()
+                        });
+                    }
+                }
+            }
+            
+            // Mouse up handler finishes drawing
+            handleMouseUp() {
+                if (this.isDrawing) {
+                    console.log("Mouse up - path has", this.currentPath.length, "points");
+                    
+                    // Finish drawing the path
+                    this.isDrawing = false;
+                    
+                    // Only save paths with more than one point
+                    if (this.currentPath.length > 1) {
+                        // Create a new path object
+                        const newPath = {
+                            points: [...this.currentPath],
+                            color: this.activeTrack ? this.activeTrack.color : this.currentColor,
+                            trackId: this.activeTrack ? this.activeTrack.id : Date.now()
+                        };
+                        
+                        this.paths.push(newPath);
+                        
+                        if (this.activeTrack) {
+                            if (!this.activeTrack.paths) {
+                                this.activeTrack.paths = [];
+                            }
+                            this.activeTrack.paths.push(newPath);
+                        }
+                        
+                        console.log("Path saved, total paths:", this.paths.length);
+                    }
+                    
+                    this.currentPath = [];
+                }
+            }
+            
+            // Get mouse position relative to canvas
+            getMousePosition(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: event.clientX - rect.left,
+                    y: event.clientY - rect.top
+                };
+            }
+            
+            // Apply grid quantization to a point
+            quantizePoint(x, y) {
+                return {
+                    x: Math.round(x / this.gridSize) * this.gridSize,
+                    y: Math.round(y / this.gridSize) * this.gridSize
+                };
+            }
+            
+            // Mouse down handler starts drawing
+            handleMouseDown(event) {
+                if (event.button === 2) {
+                    // Right-click handling could go here
+                    return;
+                }
+                
+                if (this.editMode) {
+                    // Handle edit mode selection
+                    const pos = this.getMousePosition(event);
+                    // Selection logic would go here
+                } else {
+                    // Start drawing a new path
+                    this.isDrawing = true;
+                    const pos = this.getMousePosition(event);
+                    
+                    // Apply quantization if enabled
+                    const point = this.quantizeEnabled ? 
+                        this.quantizePoint(pos.x, pos.y) : 
+                        { x: pos.x, y: pos.y };
+                    
+                    // Create a new path for the current track
+                    if (!this.activeTrack) {
+                        this.createDefaultTrack();
+                    }
+                    
+                    this.currentPath = [{
+                        x: point.x,
+                        y: point.y,
+                        time: Date.now()
+                    }];
+                }
+            }
+            
+            // Create a default track if none exists
+            createDefaultTrack() {
+                const newTrack = {
+                    id: Date.now(),
+                    name: `Track ${this.tracks.length + 1}`,
+                    color: this.colors[this.tracks.length % this.colors.length],
+                    paths: [],
+                    instrument: 'synth',
+                    volume: 0.8,
+                    parameters: {
+                    xMapping: 'pitch',
+                    yMapping: 'velocity'
+                    }
+                };
+                
+                this.tracks.push(newTrack);
+                this.activeTrack = newTrack;
+                this.currentColor = newTrack.color;
+                
+                this.updateTracksPanel();
+                
+                console.log("Created default track:", newTrack.name);
+                return newTrack;
+            }
+            
+            // Update the tracks panel UI
+            updateTracksPanel() {
+                const container = document.getElementById('tracks-container');
+                if (!container) return;
+                
+                container.innerHTML = '';
+                
+                for (const track of this.tracks) {
+                    const trackEl = document.createElement('div');
+                    trackEl.className = 'track';
+                    if (this.activeTrack === track) {
+                        trackEl.classList.add('selected');
+                    }
+                    
+                    const colorEl = document.createElement('div');
+                    colorEl.className = 'track-color';
+                    colorEl.style.backgroundColor = track.color;
+                    
+                    const nameEl = document.createElement('div');
+                    nameEl.textContent = track.name;
+                    
+                    const controlsEl = document.createElement('div');
+                    controlsEl.className = 'track-controls';
+                    
+                    trackEl.appendChild(colorEl);
+                    trackEl.appendChild(nameEl);
+                    trackEl.appendChild(controlsEl);
+                    
+                    trackEl.addEventListener('click', () => {
+                        this.activeTrack = track;
+                        this.currentColor = track.color;
+                        this.updateTracksPanel();
+                    });
+                    
+                    container.appendChild(trackEl);
+                }
+                
+                // Add "add track" button
+                const addTrackBtn = document.createElement('button');
+                addTrackBtn.className = 'control-btn';
+                addTrackBtn.innerHTML = '+ Add Track';
+                addTrackBtn.addEventListener('click', () => {
+                    this.createDefaultTrack();
+                });
+                
+                container.appendChild(addTrackBtn);
+            }
+            
+            // Toggle drawing mode
+            setDrawMode() {
+                this.editMode = false;
+                document.getElementById('draw-btn').classList.add('active');
+                document.getElementById('edit-btn').classList.remove('active');
+                console.log("Draw mode activated");
+            }
+            
+            // Toggle edit mode
+            setEditMode() {
+                this.editMode = true;
+                document.getElementById('edit-btn').classList.add('active');
+                document.getElementById('draw-btn').classList.remove('active');
+                console.log("Edit mode activated");
+            }
+            
+            // Toggle grid visibility
+            toggleGrid() {
+                this.showGrid = !this.showGrid;
+                document.getElementById('grid-toggle').classList.toggle('active', this.showGrid);
+                this.drawGrid();
+                console.log("Grid visibility:", this.showGrid);
+            }
+            
+            // Toggle quantization
+            toggleQuantize() {
+                this.quantizeEnabled = !this.quantizeEnabled;
+                document.getElementById('quantize-toggle').classList.toggle('active', this.quantizeEnabled);
+                console.log("Quantization:", this.quantizeEnabled);
+            }
+            
+            // Draw grid on canvas
+            drawGrid() {
+                if (!this.gridCtx) return;
+                
+                this.gridCtx.clearRect(0, 0, this.gridCanvas.width, this.gridCanvas.height);
+                
+                if (!this.showGrid) return;
+                
+                this.gridCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.gridCtx.lineWidth = 1;
+                
+                // Draw vertical lines
+                for (let x = 0; x < this.gridCanvas.width; x += this.gridSize) {
+                    this.gridCtx.beginPath();
+                    this.gridCtx.moveTo(x, 0);
+                    this.gridCtx.lineTo(x, this.gridCanvas.height);
+                    this.gridCtx.stroke();
+                }
+                
+                // Draw horizontal lines
+                for (let y = 0; y < this.gridCanvas.height; y += this.gridSize) {
+                    this.gridCtx.beginPath();
+                    this.gridCtx.moveTo(0, y);
+                    this.gridCtx.lineTo(this.gridCanvas.width, y);
+                    this.gridCtx.stroke();
+                }
+            }
+            
+            // Clear all paths
+            clearAll() {
+                this.paths = [];
+                this.currentPath = [];
+                
+                // Clear paths from tracks
+                for (const track of this.tracks) {
+                    track.paths = [];
+                }
+                
+                console.log("Cleared all paths");
+            }
+            
+            // Start the render loop
+            startRenderLoop() {
+                // This function continuously renders the canvas
+                const renderLoop = () => {
+                    this.render();
+                    requestAnimationFrame(renderLoop);
+                };
+                
+                requestAnimationFrame(renderLoop);
+            }
+            
+            // Render all paths and current path
+            render() {
+                // Clear the canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Draw all saved paths
+                for (const path of this.paths) {
+                    if (!path.points || path.points.length < 2) continue;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(path.points[0].x, path.points[0].y);
+                    
+                    for (let i = 1; i < path.points.length; i++) {
+                        this.ctx.lineTo(path.points[i].x, path.points[i].y);
+                    }
+                    
+                    this.ctx.strokeStyle = path.color || this.currentColor;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.stroke();
+                }
+                
+                // Draw the current path being drawn
+                if (this.isDrawing && this.currentPath.length > 0) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(this.currentPath[0].x, this.currentPath[0].y);
+                    
+                    for (let i = 1; i < this.currentPath.length; i++) {
+                        this.ctx.lineTo(this.currentPath[i].x, this.currentPath[i].y);
+                    }
+                    
+                    this.ctx.strokeStyle = this.activeTrack ? this.activeTrack.color : this.currentColor;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.lineCap = 'round';
+                    this.ctx.lineJoin = 'round';
+                    this.ctx.stroke();
+                }
+
+                // Draw playheads if playing
+                if (this.isPlaying && this.playheads) {
+                    for (let i = 0; i < this.playheads.length; i++) {
+                        const playhead = this.playheads[i];
+                        const path = this.paths[playhead.pathIndex];
+                        
+                        if (!path || !playhead.active || !path.points || path.points.length < 2) continue;
+                        
+                        // Calculate current position along the path
+                        const pointIndex = Math.floor(playhead.position * (path.points.length - 1));
+                        const nextPointIndex = Math.min(pointIndex + 1, path.points.length - 1);
+                        const pointFraction = (playhead.position * (path.points.length - 1)) - pointIndex;
+                        
+                        // Linear interpolation between points
+                        const currentPoint = path.points[pointIndex];
+                        const nextPoint = path.points[nextPointIndex];
+                        
+                        const interpolatedPoint = {
+                            x: currentPoint.x + (nextPoint.x - currentPoint.x) * pointFraction,
+                            y: currentPoint.y + (nextPoint.y - currentPoint.y) * pointFraction
+                        };
+                        
+                        // Draw playhead
+                        this.ctx.beginPath();
+                        this.ctx.arc(interpolatedPoint.x, interpolatedPoint.y, 6, 0, Math.PI * 2);
+                        this.ctx.fillStyle = path.color || this.currentColor;
+                        this.ctx.fill();
+                        
+                        this.ctx.beginPath();
+                        this.ctx.arc(interpolatedPoint.x, interpolatedPoint.y, 10, 0, Math.PI * 2);
+                        this.ctx.strokeStyle = '#FFFFFF';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.stroke();
+                    }
+                }
+            }
+
+            // Trigger sound based on position in the path
+            triggerSound(track, point, time) {
+                if (!track) return;
+                
+                try {
+                    // Map position to note (x axis controls pitch, y axis controls velocity)
+                    const xNormalized = point.x / this.canvas.width;
+                    const yNormalized = 1 - (point.y / this.canvas.height); // Invert Y
+                    
+                    // Create a scale for pitch mapping
+                    const scaleNotes = [0, 2, 4, 5, 7, 9, 11]; // Major scale
+                    const scaleIndex = Math.floor(xNormalized * scaleNotes.length);
+                    const octave = Math.floor(3 + yNormalized * 3); // Map to octaves 3-5
+                    
+                    // Calculate MIDI note (C4 = 60)
+                    const note = 60 + 
+                        scaleNotes[scaleIndex % scaleNotes.length] + 
+                        ((octave - 4) * 12);
+                    
+                    // Convert MIDI note to frequency
+                    const frequency = 440 * Math.pow(2, (note - 69) / 12);
+                    
+                    // Calculate velocity from Y position (0.1 to 1.0)
+                    const velocity = 0.1 + (yNormalized * 0.9);
+                    
+                    // Play sound based on instrument type
+                    switch(track.instrument) {
+                        case 'synth':
+                            this.synths[0].triggerAttackRelease(frequency, "8n", time, velocity);
+                            break;
+                        case 'fm':
+                            this.synths[1].triggerAttackRelease(frequency, "8n", time, velocity);
+                            break;
+                        case 'membrane':
+                            this.synths[2].triggerAttackRelease(frequency, "8n", time, velocity);
+                            break;
+                        case 'metal':
+                            this.synths[3].triggerAttackRelease(frequency, "16n", time, velocity);
+                            break;
+                        default:
+                            // Default to basic synth
+                            this.synths[0].triggerAttackRelease(frequency, "8n", time, velocity);
+                    }
+                } catch (e) {
+                    console.error("Error triggering sound:", e);
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded");
+            try {
+                window.drawmMachine = new DrawmMachine();
+                console.log("DrawmMachine instance created successfully");
+            } catch (error) {
+                console.error("Error creating DrawmMachine:", error);
+            }
+        });
+
+        window.addEventListener('load', () => {
+            if (!window.drawmMachine) {
+                console.log("Creating drawmMachine instance on window load");
+                try {
+                    window.drawmMachine = new DrawmMachine();
+                } catch (error) {
+                    console.error("Error creating DrawmMachine on window load:", error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
